@@ -1,0 +1,55 @@
+service: lailla-getenv
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: provided.al2023
+  stage: ${opt:stage, 'production'}
+  region: us-east-1
+  profile: lailla-prd
+  environment:
+    ARTIFACT_BUCKET: lailla-artifacts-${aws:accountId}
+  iamRoleStatements:
+    - Effect: Allow
+      Action:
+        - secretsmanager:GetSecretValue
+      Resource: "arn:aws:secretsmanager:${self:provider.region}:*:secret:*"
+    - Effect: Allow
+      Action:
+        - ssm:GetParametersByPath
+        - ssm:GetParameters
+        - ssm:GetParameter
+      Resource: "arn:aws:ssm:${self:provider.region}:*:parameter/*"
+    - Effect: Allow
+      Action:
+        - s3:PutObject
+      Resource:
+        - "arn:aws:s3:::${self:provider.environment.ARTIFACT_BUCKET}"
+        - "arn:aws:s3:::${self:provider.environment.ARTIFACT_BUCKET}/*"
+    - Effect: Allow
+      Action:
+        - codepipeline:PutJobSuccessResult
+        - codepipeline:PutJobFailureResult
+      Resource: "*"
+
+functions:
+  getEnvFunction:
+    handler: main
+    name: ${self:service}-getEnvFunction-${self:provider.stage}
+    description: Generates .env file from Secrets Manager and SSM, uploads to S3 for CodePipeline
+    memorySize: 128
+    timeout: 60
+
+plugins:
+  - serverless-go-build
+  - serverless-go-plugin
+
+custom:
+  go:
+    supportedRuntimes: ["provided.al2023"]
+    buildProvidedRuntimeAsBootstrap: true
+
+package:
+  patterns:
+    - '!./**'
+    - './main'
