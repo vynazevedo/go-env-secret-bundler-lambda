@@ -6,8 +6,23 @@ export AWS_SECRET_ACCESS_KEY="test"
 export AWS_DEFAULT_REGION="us-east-1"
 export ENDPOINT_URL="http://localhost:4566"
 
-# Criar bucket S3
-awslocal s3 mb s3://bucket-teste
+# Criar bucket com criptografia AES256
+awslocal s3api create-bucket \
+    --bucket seu-bucket \
+    --create-bucket-configuration LocationConstraint=us-east-1
+
+# Habilitar criptografia no bucket
+awslocal s3api put-bucket-encryption \
+    --bucket seu-bucket \
+    --server-side-encryption-configuration '{
+        "Rules": [
+            {
+                "ApplyServerSideEncryptionByDefault": {
+                    "SSEAlgorithm": "AES256"
+                }
+            }
+        ]
+    }'
 
 # Criar secret no Secrets Manager
 awslocal secretsmanager create-secret \
